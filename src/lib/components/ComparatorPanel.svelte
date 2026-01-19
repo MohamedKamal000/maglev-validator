@@ -331,13 +331,7 @@
 						fill="none"
 						viewBox="0 0 24 24"
 					>
-						<circle
-							class="opacity-25"
-							cx="12"
-							cy="12"
-							r="10"
-							stroke="currentColor"
-							stroke-width="4"
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
 						></circle>
 						<path
 							class="opacity-75"
@@ -398,7 +392,8 @@
 		</div>
 		<h3 class="mb-2 text-xl font-semibold text-slate-800 dark:text-white">Ready to Compare</h3>
 		<p class="max-w-md text-slate-500">
-			Configure your endpoints above, then click <strong class="text-blue-600">Run Comparison</strong
+			Configure your endpoints above, then click <strong class="text-blue-600"
+				>Run Comparison</strong
 			> to analyze the API response differences.
 		</p>
 	</div>

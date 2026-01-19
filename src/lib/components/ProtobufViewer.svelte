@@ -40,7 +40,9 @@
 </script>
 
 <div class="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-	<div class="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-700">
+	<div
+		class="flex items-center justify-between border-b border-slate-200 p-4 dark:border-slate-700"
+	>
 		<div class="flex items-center gap-4">
 			{#each tabs as tab (tab.id)}
 				<button
@@ -94,9 +96,7 @@
 			{:else}
 				<div class="space-y-3">
 					{#each items as item, index (index)}
-						<details
-							class="group rounded-lg border border-slate-200 dark:border-slate-600"
-						>
+						<details class="group rounded-lg border border-slate-200 dark:border-slate-600">
 							<summary
 								class="flex cursor-pointer items-center justify-between rounded-lg bg-slate-50 px-4 py-3 font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:bg-slate-700/50 dark:text-slate-300 dark:hover:bg-slate-700"
 							>

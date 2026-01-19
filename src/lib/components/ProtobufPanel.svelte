@@ -2,9 +2,7 @@
 	import { onMount } from 'svelte';
 	import ProtobufViewer from '$lib/components/ProtobufViewer.svelte';
 
-	let tripUpdatesUrl = $state(
-		'https://webservices.umoiq.com/api/gtfs-rt/v1/trip-updates/unitrans'
-	);
+	let tripUpdatesUrl = $state('https://webservices.umoiq.com/api/gtfs-rt/v1/trip-updates/unitrans');
 	let vehiclePositionsUrl = $state(
 		'https://webservices.umoiq.com/api/gtfs-rt/v1/vehicle-positions/unitrans'
 	);
@@ -338,13 +336,7 @@
 						fill="none"
 						viewBox="0 0 24 24"
 					>
-						<circle
-							class="opacity-25"
-							cx="12"
-							cy="12"
-							r="10"
-							stroke="currentColor"
-							stroke-width="4"
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"
 						></circle>
 						<path
 							class="opacity-75"
@@ -403,8 +395,8 @@
 			GTFS Realtime Protobuf Reader
 		</h3>
 		<p class="mb-4 max-w-md text-slate-500">
-			Enter your GTFS Realtime feed URLs above. You can use any combination of Trip Updates,
-			Vehicle Positions, and Service Alerts feeds.
+			Enter your GTFS Realtime feed URLs above. You can use any combination of Trip Updates, Vehicle
+			Positions, and Service Alerts feeds.
 		</p>
 	</div>
 {/if}

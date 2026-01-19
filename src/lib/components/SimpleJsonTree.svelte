@@ -9,7 +9,7 @@
 
 	let { value, level = 0, label }: Props = $props();
 	let expanded = $state(true);
-	
+
 	$effect(() => {
 		if (level >= 3) {
 			expanded = false;
