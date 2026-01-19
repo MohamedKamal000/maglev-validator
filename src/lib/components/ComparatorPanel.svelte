@@ -2,6 +2,7 @@
 	import { endpoints } from '$lib/endpoints';
 	import DiffViewer from '$lib/components/DiffViewer.svelte';
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let response1 = $state<unknown>(undefined);
 	let response2 = $state<unknown>(undefined);
@@ -49,7 +50,7 @@
 	}
 
 	function toggleIgnoreKey(key: string) {
-		const current = new Set(ignoredKeys);
+		const current = new SvelteSet(ignoredKeys);
 		if (current.has(key)) {
 			current.delete(key);
 		} else {
