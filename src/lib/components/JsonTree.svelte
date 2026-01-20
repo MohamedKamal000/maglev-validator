@@ -37,15 +37,15 @@
 	let manualExpanded = $state<boolean | null>(null);
 
 	const expanded = $derived(
-		manualExpanded !== null
-			? manualExpanded
-			: localExpand !== null
-				? localExpand
-				: globalExpand !== null
-					? level <= 1
-						? true
-						: globalExpand
-					: level < 2
+		level === 0
+			? true
+			: manualExpanded !== null
+				? manualExpanded
+				: localExpand !== null
+					? localExpand
+					: globalExpand !== null
+						? globalExpand
+						: false
 	);
 
 	const status = $derived(getDiffStatus(value, otherValue, side, ignoredKeys));

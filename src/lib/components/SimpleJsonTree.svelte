@@ -19,10 +19,8 @@
 			: localExpand !== null
 				? localExpand
 				: globalExpand !== null
-					? level <= 1
-						? true
-						: globalExpand
-					: level < 3
+					? globalExpand
+					: level === 0
 	);
 
 	let childLocalExpand = $state<boolean | null>(null);
