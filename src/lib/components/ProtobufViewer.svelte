@@ -82,6 +82,21 @@
 				return header;
 		}
 	});
+
+	let globalExpand = $state<boolean | null>(null);
+
+	function expandAll() {
+		globalExpand = true;
+	}
+
+	function collapseAll() {
+		globalExpand = false;
+	}
+
+	$effect(() => {
+		void activeTab;
+		globalExpand = null;
+	});
 </script>
 
 <div class="rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
@@ -111,17 +126,52 @@
 				</button>
 			{/each}
 		</div>
-		<div class="text-sm text-slate-500 dark:text-slate-400">
-			Total Entities: <span class="font-semibold text-slate-700 dark:text-slate-200"
-				>{entityCount}</span
-			>
+		<div class="flex items-center gap-4">
+			{#if activeTab !== 'rawText'}
+				<div class="flex gap-2">
+					<button
+						onclick={expandAll}
+						class="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
+						title="Expand all nodes"
+					>
+						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+							><path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M19 9l-7 7-7-7"
+							></path></svg
+						>
+						Expand All
+					</button>
+					<button
+						onclick={collapseAll}
+						class="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
+						title="Collapse all nodes"
+					>
+						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+							><path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M5 15l7-7 7 7"
+							></path></svg
+						>
+						Collapse All
+					</button>
+				</div>
+			{/if}
+			<div class="text-sm text-slate-500 dark:text-slate-400">
+				Total Entities: <span class="font-semibold text-slate-700 dark:text-slate-200"
+					>{entityCount}</span
+				>
+			</div>
 		</div>
 	</div>
 
 	<div class="max-h-[600px] overflow-auto p-4">
 		{#if activeTab === 'rawText'}
 			<div class="flex flex-col gap-3">
-				<!-- Feed type selector tabs -->
 				<div
 					class="flex flex-wrap items-center gap-2 rounded-lg bg-slate-100 p-2 dark:bg-slate-700"
 				>
@@ -169,7 +219,7 @@
 				</div>
 			</div>
 		{:else if activeTab === 'header'}
-			<SimpleJsonTree value={activeData()} />
+			<SimpleJsonTree value={activeData()} {globalExpand} />
 		{:else}
 			{@const items = activeData() as unknown[]}
 			{#if items.length === 0}
@@ -261,7 +311,7 @@
 								</svg>
 							</summary>
 							<div class="border-t border-slate-200 p-4 dark:border-slate-600">
-								<SimpleJsonTree value={item} />
+								<SimpleJsonTree value={item} {globalExpand} />
 							</div>
 						</details>
 					{/each}

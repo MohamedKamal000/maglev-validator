@@ -18,6 +18,8 @@
 		level?: number;
 		isReference?: boolean;
 		ignoredKeys?: string[];
+		globalExpand?: boolean | null;
+		localExpand?: boolean | null;
 	}
 
 	let {
@@ -27,9 +29,26 @@
 		label,
 		level = 0,
 		isReference = false,
-		ignoredKeys = []
+		ignoredKeys = [],
+		globalExpand = null,
+		localExpand = null
 	}: Props = $props();
-	let expanded = $state(level < 2);
+
+	let manualExpanded = $state<boolean | null>(null);
+
+	// Priority: localExpand > globalExpand > default
+	// Keep levels 0 and 1 expanded when globalExpand is false (to keep root structure visible)
+	const expanded = $derived(
+		manualExpanded !== null
+			? manualExpanded
+			: localExpand !== null
+				? localExpand
+				: globalExpand !== null
+					? level <= 1
+						? true
+						: globalExpand
+					: level < 2
+	);
 
 	const status = $derived(getDiffStatus(value, otherValue, side, ignoredKeys));
 	const hasDiff = $derived(status !== 'same' && !isReference);
@@ -48,8 +67,32 @@
 	});
 
 	function toggle() {
-		expanded = !expanded;
+		manualExpanded = !expanded;
 	}
+
+	// For expanding/collapsing all children of this node
+	let childLocalExpand = $state<boolean | null>(null);
+
+	function expandAllChildren() {
+		childLocalExpand = true;
+	}
+
+	function collapseAllChildren() {
+		// Collapse children AND this node itself
+		childLocalExpand = false;
+		manualExpanded = false;
+	}
+
+	// Reset child state when global changes
+	$effect(() => {
+		if (globalExpand !== null) {
+			childLocalExpand = null;
+			manualExpanded = null;
+		}
+	});
+
+	// Pass down the local expand state (prioritize child's local, then parent's)
+	const childExpand = $derived(childLocalExpand !== null ? childLocalExpand : localExpand);
 
 	function formatPrimitive(val: unknown): string {
 		if (val === null) return 'null';
@@ -89,22 +132,24 @@
 	}
 </script>
 
-<div class="font-sans text-[13px] leading-[1.5] tracking-wide">
+<div class="font-sans text-[14px] leading-[1.8] tracking-wide">
 	{#if label !== undefined}
-		<div class="-mx-1 flex items-start rounded px-1 {getDiffClass()}">
+		<div
+			class="group -mx-1 flex items-center rounded px-1 py-0.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 {getDiffClass()}"
+		>
 			{#if isArray(value) || isObject(value)}
 				<button
 					onclick={toggle}
-					class="mr-1 flex h-4 w-4 cursor-pointer items-center justify-center text-[10px] text-[#707070] select-none hover:text-[#333] dark:text-[#ABB2BF] dark:hover:text-[#E6E6E6]"
+					class="mr-2 flex h-5 w-5 cursor-pointer items-center justify-center rounded text-[11px] text-slate-400 transition-all hover:bg-slate-200 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:text-slate-200"
 				>
-					{expanded ? '▼' : '▶'}
+					<span class="transition-transform {expanded ? 'rotate-0' : '-rotate-90'}">▼</span>
 				</button>
 			{:else}
-				<span class="mr-1 w-4 flex-shrink-0"></span>
+				<span class="mr-2 w-5 flex-shrink-0"></span>
 			{/if}
 
-			<span class="mr-1 flex-shrink-0 font-medium text-[#000080] select-text dark:text-[#C678DD]">
-				{label}:
+			<span class="mr-1 flex-shrink-0 font-semibold text-cyan-700 select-text dark:text-cyan-400">
+				{label}<span class="text-slate-400 dark:text-slate-600">:</span>
 			</span>
 
 			{#if isPrimitive(value)}
@@ -126,14 +171,58 @@
 					</span>
 				{/if}
 			{:else}
-				<span class="text-slate-500 select-text dark:text-slate-400">
-					{isArray(value) ? `Array[${value.length}]` : 'Object{...}'}
+				<span
+					class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 select-text dark:bg-slate-800 dark:text-slate-400"
+				>
+					{isArray(value)
+						? `Array[${value.length}]`
+						: `Object{${Object.keys(value as Record<string, unknown>).length}}`}
 				</span>
+				{#if expanded && ((isArray(value) && value.length > 1) || (isObject(value) && Object.keys(value as Record<string, unknown>).length > 1))}
+					<div class="ml-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+						<button
+							onclick={(e) => {
+								e.stopPropagation();
+								expandAllChildren();
+							}}
+							class="flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
+							title="Expand all items"
+						>
+							<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+								><path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M19 9l-7 7-7-7"
+								></path></svg
+							>
+							Expand
+						</button>
+						<button
+							onclick={(e) => {
+								e.stopPropagation();
+								collapseAllChildren();
+							}}
+							class="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
+							title="Collapse all items"
+						>
+							<svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+								><path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M5 15l7-7 7 7"
+								></path></svg
+							>
+							Collapse
+						</button>
+					</div>
+				{/if}
 				{#if !expanded && diffCount > 0 && !isReference}
 					<span
-						class="ml-3 rounded border border-red-100 bg-red-50 px-1.5 py-0.5 text-[11px] text-red-600 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400"
+						class="ml-2 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
 					>
-						{diffCount} diffs
+						{diffCount} diff{diffCount > 1 ? 's' : ''}
 					</span>
 				{/if}
 			{/if}
@@ -141,7 +230,11 @@
 	{/if}
 
 	{#if expanded}
-		<div class="ml-5">
+		<div
+			class={label !== undefined
+				? 'ml-4 border-l-2 border-slate-200 pl-4 dark:border-slate-700'
+				: ''}
+		>
 			{#if isArray(value)}
 				{#each arrayItems as item, index (index)}
 					{@const otherItem = otherArrayItems[index]}
@@ -153,6 +246,8 @@
 						level={level + 1}
 						{isReference}
 						{ignoredKeys}
+						{globalExpand}
+						localExpand={childExpand}
 					/>
 				{/each}
 			{:else if isObject(value)}
@@ -168,6 +263,8 @@
 							level={level + 1}
 							{isReference}
 							{ignoredKeys}
+							{globalExpand}
+							localExpand={childExpand}
 						/>
 					{/if}
 				{/each}
