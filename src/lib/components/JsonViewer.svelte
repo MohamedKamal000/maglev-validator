@@ -10,6 +10,8 @@
 		mode?: 'server1' | 'server2';
 		searchQuery?: string;
 		matchingPaths?: Set<string>;
+		syncedExpandedPaths?: Set<string>;
+		onToggle?: (path: string, expanded: boolean) => void;
 	}
 
 	let {
@@ -18,7 +20,9 @@
 		ignoredKeys = [],
 		mode = 'server1',
 		searchQuery = '',
-		matchingPaths = new Set<string>()
+		matchingPaths = new Set<string>(),
+		syncedExpandedPaths,
+		onToggle
 	}: Props = $props();
 
 	let globalExpand = $state<boolean | null>(null);
@@ -138,6 +142,8 @@
 				skipComparison={rootsAreEqual === true}
 				{searchQuery}
 				{matchingPaths}
+				{syncedExpandedPaths}
+				{onToggle}
 			/>
 		{:else}
 			<div class="py-8 text-center text-gray-400 italic">No JSON data</div>

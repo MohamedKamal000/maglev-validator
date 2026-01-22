@@ -78,6 +78,40 @@
 	}
 
 	const totalMatches = $derived(searchResults1.length + searchResults2.length);
+
+	let syncScroll = $state(true);
+	let scrollContainer1: HTMLDivElement;
+	let scrollContainer2: HTMLDivElement;
+	let isScrolling = $state(false);
+
+	function handleScroll(source: 'left' | 'right') {
+		if (!syncScroll || isScrolling) return;
+		isScrolling = true;
+
+		const sourceEl = source === 'left' ? scrollContainer1 : scrollContainer2;
+		const targetEl = source === 'left' ? scrollContainer2 : scrollContainer1;
+
+		if (sourceEl && targetEl) {
+			targetEl.scrollTop = sourceEl.scrollTop;
+			targetEl.scrollLeft = sourceEl.scrollLeft;
+		}
+
+		requestAnimationFrame(() => {
+			isScrolling = false;
+		});
+	}
+
+	let syncSelect = $state(true);
+	let syncedExpandedPaths = new SvelteSet<string>();
+
+	function handleToggle(path: string, expanded: boolean) {
+		if (!syncSelect) return;
+		if (expanded) {
+			syncedExpandedPaths.add(path);
+		} else {
+			syncedExpandedPaths.delete(path);
+		}
+	}
 </script>
 
 <div class="mb-4 flex items-center gap-4">
@@ -134,6 +168,42 @@
 		{/if}
 	</div>
 
+	<button
+		onclick={() => (syncScroll = !syncScroll)}
+		class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all {syncScroll
+			? 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400'
+			: 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'}"
+		title="{syncScroll ? 'Disable' : 'Enable'} synchronized scrolling"
+	>
+		<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+			></path>
+		</svg>
+		Sync Scroll
+	</button>
+
+	<button
+		onclick={() => (syncSelect = !syncSelect)}
+		class="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all {syncSelect
+			? 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400'
+			: 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'}"
+		title="{syncSelect ? 'Disable' : 'Enable'} synchronized expand/collapse"
+	>
+		<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<path
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M4 6h16M4 12h16m-7 6h7"
+			></path>
+		</svg>
+		Sync Select
+	</button>
+
 	{#if debouncedSearchQuery}
 		<div class="flex items-center gap-3 text-sm">
 			{#if totalMatches > 0}
@@ -182,7 +252,11 @@
 		Server 2 Response
 	</div>
 
-	<div class="max-h-[800px] overflow-auto bg-white dark:bg-gray-900">
+	<div
+		bind:this={scrollContainer1}
+		onscroll={() => handleScroll('left')}
+		class="max-h-[800px] overflow-auto bg-white dark:bg-gray-900"
+	>
 		<JsonViewer
 			data={focused1}
 			otherData={focused2}
@@ -191,9 +265,13 @@
 			mode="server1"
 			searchQuery={debouncedSearchQuery}
 			matchingPaths={matchingPaths1}
+			{syncedExpandedPaths}
+			onToggle={syncSelect ? handleToggle : undefined}
 		/>
 	</div>
 	<div
+		bind:this={scrollContainer2}
+		onscroll={() => handleScroll('right')}
 		class="max-h-[800px] overflow-auto border-l border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
 	>
 		<JsonViewer
@@ -204,6 +282,8 @@
 			mode="server2"
 			searchQuery={debouncedSearchQuery}
 			matchingPaths={matchingPaths2}
+			{syncedExpandedPaths}
+			onToggle={syncSelect ? handleToggle : undefined}
 		/>
 	</div>
 </div>

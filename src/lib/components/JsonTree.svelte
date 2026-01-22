@@ -24,6 +24,8 @@
 		searchQuery?: string;
 		matchingPaths?: Set<string>;
 		currentPath?: string;
+		syncedExpandedPaths?: Set<string>;
+		onToggle?: (path: string, expanded: boolean) => void;
 	}
 
 	const CHUNK_SIZE = 50;
@@ -42,7 +44,9 @@
 		skipComparison = false,
 		searchQuery = '',
 		matchingPaths = new Set<string>(),
-		currentPath = ''
+		currentPath = '',
+		syncedExpandedPaths,
+		onToggle
 	}: Props = $props();
 
 	function matchesSearch(text: string): boolean {
@@ -111,18 +115,32 @@
 		}
 	});
 
+	const syncedExpanded = $derived(
+		syncedExpandedPaths && currentPath ? syncedExpandedPaths.has(currentPath) : null
+	);
+
+	let lastSyncedExpanded = $state<boolean | null>(null);
+	$effect(() => {
+		if (syncedExpanded !== null && syncedExpanded !== lastSyncedExpanded) {
+			lastSyncedExpanded = syncedExpanded;
+			manualExpanded = null;
+		}
+	});
+
 	const expanded = $derived(
 		level === 0
 			? true
-			: shouldAutoExpand()
-				? true
-				: manualExpanded !== null
-					? manualExpanded
-					: localExpand !== null
-						? localExpand
-						: globalExpand !== null
-							? globalExpand
-							: false
+			: manualExpanded !== null
+				? manualExpanded
+				: syncedExpanded !== null
+					? syncedExpanded
+					: shouldAutoExpand()
+						? true
+						: localExpand !== null
+							? localExpand
+							: globalExpand !== null
+								? globalExpand
+								: false
 	);
 
 	const isPrimitiveValue = $derived(isPrimitive(value));
@@ -174,7 +192,12 @@
 	});
 
 	function toggle() {
-		manualExpanded = !expanded;
+		const newExpanded = !expanded;
+		manualExpanded = newExpanded;
+		// Notify parent about the toggle for sync selection
+		if (onToggle && currentPath) {
+			onToggle(currentPath, newExpanded);
+		}
 	}
 
 	async function loadMore() {
@@ -398,6 +421,8 @@
 						{searchQuery}
 						{matchingPaths}
 						currentPath={currentPath ? `${currentPath}[${index}]` : `[${index}]`}
+						{syncedExpandedPaths}
+						{onToggle}
 					/>
 				{/each}
 				{#if hasMoreItems}
@@ -468,6 +493,8 @@
 						{searchQuery}
 						{matchingPaths}
 						currentPath={currentPath ? `${currentPath}.${key}` : key}
+						{syncedExpandedPaths}
+						{onToggle}
 					/>
 				{/each}
 				{#if hasMoreEntries}
