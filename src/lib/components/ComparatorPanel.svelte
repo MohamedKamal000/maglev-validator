@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { endpoints } from '$lib/endpoints';
 	import DiffViewer from '$lib/components/DiffViewer.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
+	import { browser } from '$app/environment';
 
 	let response1 = $state<unknown>(undefined);
 	let response2 = $state<unknown>(undefined);
@@ -60,13 +61,28 @@
 		handleIgnoreInput();
 	}
 
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.ctrlKey && e.key === 'Enter' && !loading) {
+			e.preventDefault();
+			fetchBoth();
+		}
+	}
+
 	onMount(() => {
+		window.addEventListener('keydown', handleKeyDown);
+
 		if (typeof localStorage !== 'undefined') {
 			if (localStorage.server1Base) server1Base = localStorage.server1Base;
 			if (localStorage.server2Base) server2Base = localStorage.server2Base;
 			ignoredKeysInput = localStorage.getItem(`ignore_${selectedEndpoint}`) || '';
 		}
 		updateParams();
+	});
+
+	onDestroy(() => {
+		if (browser) {
+			window.removeEventListener('keydown', handleKeyDown);
+		}
 	});
 
 	$effect(() => {
@@ -324,6 +340,7 @@
 				onclick={fetchBoth}
 				disabled={loading}
 				class="flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white transition-all hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+				title="Run Comparison (Ctrl+Enter)"
 			>
 				{#if loading}
 					<svg
@@ -342,7 +359,8 @@
 					</svg>
 					Running...
 				{:else}
-					Run Comparison
+					<span>Run Comparison</span>
+					<kbd class="ml-1 rounded bg-indigo-500 px-1.5 py-0.5 text-xs font-normal">Ctrl+↵</kbd>
 				{/if}
 			</button>
 		</div>

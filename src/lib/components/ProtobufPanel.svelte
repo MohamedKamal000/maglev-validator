@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import ProtobufViewer from '$lib/components/ProtobufViewer.svelte';
 
 	let tripUpdatesUrl = $state('https://webservices.umoiq.com/api/gtfs-rt/v1/trip-updates/unitrans');
@@ -28,7 +29,16 @@
 	let refreshTimer: number | undefined = undefined;
 	let lastFetchTime = $state<Date | null>(null);
 
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.ctrlKey && e.key === 'Enter' && !loading) {
+			e.preventDefault();
+			fetchAllFeeds();
+		}
+	}
+
 	onMount(() => {
+		window.addEventListener('keydown', handleKeyDown);
+
 		if (typeof localStorage !== 'undefined') {
 			if (localStorage.tripUpdatesUrl) tripUpdatesUrl = localStorage.tripUpdatesUrl;
 			if (localStorage.vehiclePositionsUrl) vehiclePositionsUrl = localStorage.vehiclePositionsUrl;
@@ -40,6 +50,12 @@
 					headers = [{ key: '', value: '' }];
 				}
 			}
+		}
+	});
+
+	onDestroy(() => {
+		if (browser) {
+			window.removeEventListener('keydown', handleKeyDown);
 		}
 	});
 
@@ -337,6 +353,7 @@
 				onclick={fetchAllFeeds}
 				disabled={loading}
 				class="flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-2.5 font-medium text-white transition-all hover:bg-indigo-700 hover:shadow-lg active:scale-[0.98] disabled:bg-indigo-400 disabled:shadow-none"
+				title="Fetch All Feeds (Ctrl+Enter)"
 			>
 				{#if loading}
 					<svg
@@ -355,7 +372,8 @@
 					</svg>
 					Fetching...
 				{:else}
-					Fetch All Feeds
+					<span>Fetch All Feeds</span>
+					<kbd class="ml-1 rounded bg-indigo-500 px-1.5 py-0.5 text-xs font-normal">Ctrl+↵</kbd>
 				{/if}
 			</button>
 		</div>
