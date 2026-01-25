@@ -2,14 +2,16 @@
 	import { onMount } from 'svelte';
 	import ComparatorPanel from '$lib/components/ComparatorPanel.svelte';
 	import ProtobufPanel from '$lib/components/ProtobufPanel.svelte';
+	import KeyLogViewer from '$lib/components/KeyLogViewer.svelte';
 
-	let activeTab = $state<'comparator' | 'protobuf'>('comparator');
+	let activeTab = $state<'comparator' | 'protobuf' | 'keylogger'>('comparator');
 	let theme = $state('light');
 
 	onMount(() => {
 		if (typeof localStorage !== 'undefined') {
 			if (localStorage.theme) theme = localStorage.theme;
-			if (localStorage.activeTab) activeTab = localStorage.activeTab as 'comparator' | 'protobuf';
+			if (localStorage.activeTab)
+				activeTab = localStorage.activeTab as 'comparator' | 'protobuf' | 'keylogger';
 		}
 		updateTheme();
 	});
@@ -106,6 +108,23 @@
 						>
 						<span>GTFS Realtime</span>
 					</button>
+					<button
+						onclick={() => (activeTab = 'keylogger')}
+						class="flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-all {activeTab ===
+						'keylogger'
+							? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+							: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}"
+					>
+						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+							><path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+							></path></svg
+						>
+						<span>Key Logger</span>
+					</button>
 				</div>
 			</div>
 
@@ -140,12 +159,14 @@
 	</header>
 
 	<main class="mx-auto max-w-[1800px] px-6 py-6">
-		<!-- Keep both panels mounted but hidden to preserve state -->
 		<div class={activeTab === 'comparator' ? '' : 'hidden'}>
 			<ComparatorPanel />
 		</div>
 		<div class={activeTab === 'protobuf' ? '' : 'hidden'}>
 			<ProtobufPanel />
+		</div>
+		<div class={activeTab === 'keylogger' ? '' : 'hidden'}>
+			<KeyLogViewer />
 		</div>
 	</main>
 </div>
