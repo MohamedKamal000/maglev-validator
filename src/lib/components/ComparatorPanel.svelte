@@ -4,6 +4,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { browser } from '$app/environment';
+	import { logState } from '$lib/logState.svelte';
 
 	let response1 = $state<unknown>(undefined);
 	let response2 = $state<unknown>(undefined);
@@ -24,6 +25,19 @@
 	let showIgnoreModal = $state(false);
 	let ignoreSearch = $state('');
 
+	let showWatchModal = $state(false);
+	let watchSearch = $state('');
+	let watchedKeysInput = $state('');
+	let lastLoggedTime = $state<number | null>(null);
+	let isLogging = $state(false);
+
+	const watchedKeys = $derived(
+		watchedKeysInput
+			.split(',')
+			.map((k) => k.trim())
+			.filter((k) => k.length > 0)
+	);
+
 	const ignoredKeys = $derived(
 		ignoredKeysInput
 			.split(',')
@@ -38,14 +52,18 @@
 		return Array.from(keys).sort();
 	});
 
-	function collectKeys(obj: unknown, keys: Set<string>) {
+	function collectKeys(obj: unknown, keys: Set<string>, prefix = '') {
 		if (!obj || typeof obj !== 'object') return;
 		if (Array.isArray(obj)) {
-			obj.forEach((item) => collectKeys(item, keys));
+			obj.slice(0, 3).forEach((item, index) => {
+				const path = prefix ? `${prefix}.${index}` : `${index}`;
+				collectKeys(item, keys, path);
+			});
 		} else {
 			Object.keys(obj as Record<string, unknown>).forEach((key) => {
-				keys.add(key);
-				collectKeys((obj as Record<string, unknown>)[key], keys);
+				const fullPath = prefix ? `${prefix}.${key}` : key;
+				keys.add(fullPath);
+				collectKeys((obj as Record<string, unknown>)[key], keys, fullPath);
 			});
 		}
 	}
@@ -75,6 +93,7 @@
 			if (localStorage.server1Base) server1Base = localStorage.server1Base;
 			if (localStorage.server2Base) server2Base = localStorage.server2Base;
 			ignoredKeysInput = localStorage.getItem(`ignore_${selectedEndpoint}`) || '';
+			watchedKeysInput = localStorage.getItem(`watch_${selectedEndpoint}`) || '';
 		}
 		updateParams();
 	});
@@ -94,6 +113,7 @@
 		if (selectedEndpoint !== lastEndpoint) {
 			if (typeof localStorage !== 'undefined') {
 				ignoredKeysInput = localStorage.getItem(`ignore_${selectedEndpoint}`) || '';
+				watchedKeysInput = localStorage.getItem(`watch_${selectedEndpoint}`) || '';
 			}
 			lastEndpoint = selectedEndpoint;
 		}
@@ -111,6 +131,70 @@
 	function handleIgnoreInput() {
 		if (typeof localStorage !== 'undefined') {
 			localStorage.setItem(`ignore_${selectedEndpoint}`, ignoredKeysInput);
+		}
+	}
+
+	function handleWatchInput() {
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem(`watch_${selectedEndpoint}`, watchedKeysInput);
+		}
+	}
+
+	function toggleWatchKey(key: string) {
+		const current = new SvelteSet(watchedKeys);
+		if (current.has(key)) {
+			current.delete(key);
+		} else {
+			current.add(key);
+		}
+		watchedKeysInput = Array.from(current).join(', ');
+		handleWatchInput();
+	}
+
+	function getValueByPath(obj: unknown, path: string): unknown {
+		if (!obj || typeof obj !== 'object') return undefined;
+		const parts = path.split('.');
+		let current: unknown = obj;
+		for (const part of parts) {
+			if (current === null || current === undefined) return undefined;
+			if (typeof current !== 'object') return undefined;
+			current = (current as Record<string, unknown>)[part];
+		}
+		return current;
+	}
+
+	async function logWatchedKeys(resp1: unknown, resp2: unknown) {
+		if (watchedKeys.length === 0) return;
+
+		const timestamp = new Date().toISOString();
+		const keys = watchedKeys.map((keyPath) => ({
+			path: keyPath,
+			server1Value: getValueByPath(resp1, keyPath),
+			server2Value: getValueByPath(resp2, keyPath)
+		}));
+
+		try {
+			isLogging = true;
+			await fetch('/api/keylog', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					endpoint: selectedEndpoint,
+					timestamp,
+					keys,
+					response1: resp1,
+					response2: resp2
+				})
+			});
+			logState.triggerUpdate();
+			lastLoggedTime = Date.now();
+			setTimeout(() => {
+				lastLoggedTime = null;
+			}, 3000);
+		} catch (e) {
+			console.error('Failed to log keys:', e);
+		} finally {
+			isLogging = false;
 		}
 	}
 
@@ -169,6 +253,8 @@
 
 			response1 = data.response1;
 			response2 = data.response2;
+
+			await logWatchedKeys(data.response1, data.response2);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Unknown error';
 		} finally {
@@ -303,6 +389,47 @@
 								stroke-linejoin="round"
 								stroke-width="2"
 								d="M19 9l-7 7-7-7"
+							/>
+						</svg>
+					</span>
+				</button>
+			</div>
+
+			<div class="col-span-2">
+				<label
+					class="mb-2 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
+					>Watch Keys <span class="text-indigo-500">(Log)</span></label
+				>
+				<button
+					onclick={() => (showWatchModal = true)}
+					class="group flex w-full items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-left text-sm text-indigo-700 transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none dark:border-indigo-900/30 dark:bg-indigo-900/20 dark:text-indigo-300 dark:focus:ring-indigo-500/40"
+				>
+					<span class="truncate">
+						{#if lastLoggedTime}
+							<span class="animate-pulse font-medium text-green-600 dark:text-green-400"
+								>Logged!</span
+							>
+						{:else if isLogging}
+							<span class="font-medium text-indigo-600 dark:text-indigo-400">Logging...</span>
+						{:else}
+							{watchedKeys.length ? `${watchedKeys.length} keys watched` : 'Select keys...'}
+						{/if}
+					</span>
+					<span
+						class="text-indigo-400 transition-colors group-hover:text-indigo-600 dark:group-hover:text-indigo-200"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-4 w-4"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
 							/>
 						</svg>
 					</span>
@@ -476,9 +603,15 @@
 						No keys found. Run a comparison first!
 					</div>
 				{:else}
-					{@const filteredKeys = availableKeys.filter((k) =>
-						k.toLowerCase().includes(ignoreSearch.toLowerCase())
-					)}
+					{@const filteredKeys = availableKeys
+						.filter((k) => k.toLowerCase().includes(ignoreSearch.toLowerCase()))
+						.sort((a, b) => {
+							const aSel = ignoredKeys.includes(a);
+							const bSel = ignoredKeys.includes(b);
+							if (aSel && !bSel) return -1;
+							if (!aSel && bSel) return 1;
+							return a.localeCompare(b);
+						})}
 					<div class="grid grid-cols-1 gap-1">
 						{#each filteredKeys as key (key)}
 							<label
@@ -510,10 +643,135 @@
 			</div>
 
 			<div
-				class="flex justify-end gap-3 rounded-b-xl border-t border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50"
+				class="flex justify-between gap-3 rounded-b-xl border-t border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50"
 			>
 				<button
+					onclick={() => {
+						ignoredKeysInput = '';
+						handleIgnoreInput();
+					}}
+					class="px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+				>
+					Clear Selection
+				</button>
+				<button
 					onclick={() => (showIgnoreModal = false)}
+					class="px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
+				>
+					Close
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showWatchModal}
+	<div
+		class="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/50 p-4 backdrop-blur-sm transition-all sm:p-6"
+		role="dialog"
+		aria-modal="true"
+	>
+		<div
+			class="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-2xl dark:bg-gray-800"
+		>
+			<div
+				class="flex items-center justify-between border-b border-gray-100 p-4 dark:border-gray-700"
+			>
+				<h3 class="text-lg font-semibold text-gray-800 dark:text-white">Watch Keys</h3>
+				<button
+					onclick={() => (showWatchModal = false)}
+					class="text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="h-5 w-5"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						/>
+					</svg>
+				</button>
+			</div>
+
+			<div
+				class="border-b border-gray-100 bg-indigo-50/30 p-4 dark:border-gray-700 dark:bg-indigo-900/20"
+			>
+				<div class="mb-3 text-xs text-indigo-600 dark:text-indigo-400">
+					Select keys to automatically log their values to the database when comparing.
+				</div>
+				<input
+					type="text"
+					bind:value={watchSearch}
+					placeholder="Search keys..."
+					class="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+				/>
+			</div>
+
+			<div class="flex-1 overflow-y-auto p-2">
+				{#if availableKeys.length === 0}
+					<div class="p-8 text-center text-gray-400 italic">
+						No keys found. Run a comparison first!
+					</div>
+				{:else}
+					{@const filteredKeys = availableKeys
+						.filter((k) => k.toLowerCase().includes(watchSearch.toLowerCase()))
+						.sort((a, b) => {
+							const aSel = watchedKeys.includes(a);
+							const bSel = watchedKeys.includes(b);
+							if (aSel && !bSel) return -1;
+							if (!aSel && bSel) return 1;
+							return a.localeCompare(b);
+						})}
+					<div class="grid grid-cols-1 gap-1">
+						{#each filteredKeys as key (key)}
+							<label
+								class="flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50"
+							>
+								<input
+									type="checkbox"
+									checked={watchedKeys.includes(key)}
+									onchange={() => toggleWatchKey(key)}
+									class="h-4 w-4 rounded border-gray-300 bg-white text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 dark:border-gray-600 dark:bg-gray-700"
+								/>
+								<span class="font-mono text-sm font-medium text-gray-700 dark:text-gray-300"
+									>{key}</span
+								>
+								{#if watchedKeys.includes(key)}
+									<span class="ml-auto text-xs font-medium text-indigo-600 dark:text-indigo-400"
+										>Watched</span
+									>
+								{/if}
+							</label>
+						{/each}
+						{#if filteredKeys.length === 0}
+							<div class="p-4 text-center text-sm text-gray-400">
+								No keys match "{watchSearch}"
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			<div
+				class="flex justify-between gap-3 rounded-b-xl border-t border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50"
+			>
+				<button
+					onclick={() => {
+						watchedKeysInput = '';
+						handleWatchInput();
+					}}
+					class="px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+				>
+					Clear Selection
+				</button>
+				<button
+					onclick={() => (showWatchModal = false)}
 					class="px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
 				>
 					Close

@@ -276,6 +276,8 @@
 			class="group -mx-1 flex items-center rounded px-1 py-0.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 {getDiffClass()} {labelMatchesSearch ||
 			valueMatchesSearch
 				? 'bg-yellow-50/30 ring-2 ring-yellow-400/50 dark:bg-yellow-900/20'
+				: ''} {currentPath && matchingPaths.has(currentPath)
+				? 'bg-indigo-100/50 ring-2 ring-indigo-500/50 dark:bg-indigo-900/30'
 				: ''}"
 		>
 			{#if isArray(value) || isObject(value)}
