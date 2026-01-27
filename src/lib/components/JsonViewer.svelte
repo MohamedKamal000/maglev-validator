@@ -134,6 +134,7 @@
 			<JsonTree
 				value={data}
 				otherValue={otherData}
+				label="root"
 				side={mode === 'server1' ? 'left' : 'right'}
 				isReference={mode === 'server2'}
 				{ignoredKeys}

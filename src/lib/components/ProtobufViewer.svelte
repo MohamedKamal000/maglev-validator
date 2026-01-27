@@ -174,8 +174,13 @@
 	}
 </script>
 
-<div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-	<div class="flex items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+<div
+	class="flex h-full min-h-0 flex-col rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+>
+	<div
+		class="sticky top-0 z-10 flex items-center justify-between overflow-x-auto border-b border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
+		style="min-width: 0;"
+	>
 		<div class="flex items-center gap-4">
 			{#each tabs as tab (tab.id)}
 				<button
@@ -239,9 +244,13 @@
 					<span>{tab.label}</span>
 					{#if tab.count !== null}
 						<span
-							class="rounded-full px-2 py-0.5 text-xs {activeTab === tab.id
-								? 'bg-indigo-200 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-200'
-								: 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}"
+							class="rounded-full px-2 py-0.5 text-xs {tab.id === 'alerts'
+								? activeTab === tab.id
+									? 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200'
+									: 'bg-red-100 text-red-600 dark:bg-red-700 dark:text-red-300'
+								: activeTab === tab.id
+									? 'bg-indigo-200 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-200'
+									: 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}"
 						>
 							{#if debouncedQuery && tab.filteredCount !== tab.count}
 								{tab.filteredCount}/{tab.count}
@@ -353,7 +362,10 @@
 					</button>
 				</div>
 			{/if}
-			<div class="text-sm text-gray-500 dark:text-gray-400">
+			<div
+				class="max-w-35 min-w-30 truncate overflow-hidden text-right text-sm whitespace-nowrap text-gray-500 dark:text-gray-400"
+				title={`Total Entities: ${entityCount}`}
+			>
 				Total Entities: <span class="font-semibold text-gray-700 dark:text-gray-200"
 					>{entityCount}</span
 				>
@@ -392,7 +404,7 @@
 		</div>
 	{/if}
 
-	<div class="max-h-[600px] overflow-auto p-4">
+	<div class="min-h-0 flex-1 overflow-auto p-4">
 		{#if activeTab === 'rawText'}
 			<div class="flex flex-col gap-3">
 				<div class="flex flex-wrap items-center gap-2 rounded-lg bg-gray-100 p-2 dark:bg-gray-700">
@@ -482,7 +494,7 @@
 					</button>
 					{#if currentRawText()}
 						<pre
-							class="rounded-lg bg-gray-50 p-4 pr-20 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-gray-700 dark:bg-gray-900 dark:text-gray-300">{currentRawText()}</pre>
+							class="rounded-lg bg-gray-50 p-4 pr-20 font-mono text-xs leading-relaxed wrap-break-word whitespace-pre-wrap text-gray-700 dark:bg-gray-900 dark:text-gray-300">{currentRawText()}</pre>
 					{:else}
 						<div
 							class="flex flex-col items-center justify-center rounded-lg bg-gray-50 py-12 text-center dark:bg-gray-900"
@@ -642,7 +654,7 @@
 										{@const translation = headerText?.translation?.[0] as
 											| Record<string, string>
 											| undefined}
-										<span class="text-sm">
+										<span class="text-sm text-red-300 dark:text-red-400">
 											{translation?.text || alert.id || 'Alert'}
 										</span>
 									{/if}
