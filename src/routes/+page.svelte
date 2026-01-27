@@ -1,17 +1,28 @@
+<!-- UI Version 2.0.1 - Cache Busting -->
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import ComparatorPanel from '$lib/components/ComparatorPanel.svelte';
 	import ProtobufPanel from '$lib/components/ProtobufPanel.svelte';
 	import KeyLogViewer from '$lib/components/KeyLogViewer.svelte';
+	import GtfsRtLogViewer from '$lib/components/GtfsRtLogViewer.svelte';
 
-	let activeTab = $state<'comparator' | 'protobuf' | 'keylogger'>('comparator');
+	let activeTab = $state<'comparator' | 'protobuf' | 'logger'>('comparator');
+	let loggerSubTab = $state<'api' | 'gtfsrt'>('api');
 	let theme = $state('light');
 
 	onMount(() => {
 		if (typeof localStorage !== 'undefined') {
 			if (localStorage.theme) theme = localStorage.theme;
-			if (localStorage.activeTab)
-				activeTab = localStorage.activeTab as 'comparator' | 'protobuf' | 'keylogger';
+			if (localStorage.activeTab) {
+				const saved = localStorage.activeTab;
+				if (saved === 'keylogger' || saved === 'gtfsrtlogs') {
+					activeTab = 'logger';
+					loggerSubTab = saved === 'keylogger' ? 'api' : 'gtfsrt';
+				} else {
+					activeTab = saved as 'comparator' | 'protobuf' | 'logger';
+				}
+			}
+			if (localStorage.loggerSubTab) loggerSubTab = localStorage.loggerSubTab as 'api' | 'gtfsrt';
 		}
 		updateTheme();
 	});
@@ -23,6 +34,7 @@
 	$effect(() => {
 		if (typeof localStorage !== 'undefined') {
 			localStorage.activeTab = activeTab;
+			localStorage.loggerSubTab = loggerSubTab;
 		}
 	});
 
@@ -109,9 +121,9 @@
 						<span>GTFS Realtime</span>
 					</button>
 					<button
-						onclick={() => (activeTab = 'keylogger')}
+						onclick={() => (activeTab = 'logger')}
 						class="flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-all {activeTab ===
-						'keylogger'
+						'logger'
 							? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
 							: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}"
 					>
@@ -123,7 +135,7 @@
 								d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
 							></path></svg
 						>
-						<span>Key Logger</span>
+						<span>Logger History</span>
 					</button>
 				</div>
 			</div>
@@ -165,8 +177,34 @@
 		<div class={activeTab === 'protobuf' ? '' : 'hidden'}>
 			<ProtobufPanel />
 		</div>
-		<div class={activeTab === 'keylogger' ? '' : 'hidden'}>
-			<KeyLogViewer />
+		<div class={activeTab === 'logger' ? '' : 'hidden'}>
+			<div class="mb-6 flex justify-center">
+				<div class="inline-flex rounded-xl bg-gray-200/50 p-1 dark:bg-gray-800/50">
+					<button
+						onclick={() => (loggerSubTab = 'api')}
+						class="rounded-lg px-6 py-2 text-sm font-bold transition-all {loggerSubTab === 'api'
+							? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-700 dark:text-indigo-400'
+							: 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}"
+					>
+						API Response Logs
+					</button>
+					<button
+						onclick={() => (loggerSubTab = 'gtfsrt')}
+						class="rounded-lg px-6 py-2 text-sm font-bold transition-all {loggerSubTab === 'gtfsrt'
+							? 'bg-white text-indigo-600 shadow-sm dark:bg-gray-700 dark:text-indigo-400'
+							: 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}"
+					>
+						GTFS-RT Snapshots
+					</button>
+				</div>
+			</div>
+
+			<div class={loggerSubTab === 'api' ? '' : 'hidden'}>
+				<KeyLogViewer />
+			</div>
+			<div class={loggerSubTab === 'gtfsrt' ? '' : 'hidden'}>
+				<GtfsRtLogViewer />
+			</div>
 		</div>
 	</main>
 </div>
