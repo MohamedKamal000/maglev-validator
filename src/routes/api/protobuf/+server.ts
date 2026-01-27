@@ -5,7 +5,7 @@ import { insertGtfsRtLog } from '$lib/server/db';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { url, headers } = await request.json();
+		const { url, headers, sessionId } = await request.json();
 
 		if (!url) {
 			return json({ error: 'URL is required' }, { status: 400 });
@@ -96,7 +96,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		try {
-			const { sessionId } = await request.clone().json();
 			insertGtfsRtLog({
 				sessionId,
 				timestamp: feedObject.header?.timestamp
